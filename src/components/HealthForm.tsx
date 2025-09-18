@@ -1,13 +1,26 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { X, Plus } from 'lucide-react';
-import { HealthProfile } from '@/lib/api';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { X, Plus } from "lucide-react";
+import { HealthProfile } from "@/lib/api";
+import {
+  HEALTH_CONDITIONS,
+  HEALTH_FOCUS_OPTIONS,
+  MEDICATIONS,
+  PRIORITY_OPTIONS,
+} from "@/constants/constant";
+import { LabTestForm } from "./LabTestForm";
+import { PreviousOrdersForm } from "./PreviousOrdersForm";
 
 interface HealthFormProps {
   onSubmit: (profile: HealthProfile) => void;
@@ -15,97 +28,207 @@ interface HealthFormProps {
   submitButtonText: string;
 }
 
-const HEALTH_CONDITIONS = [
-  'PCOS', 'Endometriosis', 'Thyroid issues', 'Early menopause', 
-  'Diminished ovarian reserve', 'Infertility'
-];
-
-const MEDICATIONS = [
-  'Prenatal supplements', 'Hormonal replacement therapy', 
-  'Birth control', 'Fertility treatments'
-];
-
-const HEALTH_FOCUS_OPTIONS = [
-  'Preparing for pregnancy',
-  'Actively trying to conceive', 
-  'Fertility preservation / egg freezing',
-  'Balancing hormones and cycle length',
-  'Managing PCOS',
-  'Nutrition and weight loss',
-  'Mental health and well being',
-  'Perimenopause and menopause',
-  'Just exploring the app'
-];
-
-const PRIORITY_OPTIONS = [
-  'Understanding my fertility window',
-  'Improving egg quality',
-  'Managing PCOS', 
-  'Nutrition and weight management',
-  'Mental health and emotional balance',
-  'Reducing symptoms',
-  'Tracking hormones over time',
-  'Accessing expert guidance'
-];
-
-export const HealthForm: React.FC<HealthFormProps> = ({ 
-  onSubmit, 
+export const HealthForm: React.FC<HealthFormProps> = ({
+  onSubmit,
   isLoading = false,
-  submitButtonText 
+  submitButtonText,
 }) => {
   const [profile, setProfile] = useState<HealthProfile>({
     symptoms: [],
-    healthConditions: [],
-    medications: []
+    conditions: [],
+    currentUsage: [],
   });
-  const [newSymptom, setNewSymptom] = useState('');
+  const [newSymptom, setNewSymptom] = useState("");
+  const [severityLevel, setSeverityLevel] = useState<number>();
+  const [symptomDateTime, setSymptomDateTime] = useState("");
 
   const handleAddSymptom = () => {
-    if (newSymptom.trim() && !profile.symptoms.includes(newSymptom.trim())) {
-      setProfile(prev => ({
+    if (
+      newSymptom.trim() &&
+      symptomDateTime &&
+      !profile.symptoms.some((s) => s.symptomName === newSymptom.trim())
+    ) {
+      setProfile((prev) => ({
         ...prev,
-        symptoms: [...prev.symptoms, newSymptom.trim()]
+        symptoms: [
+          ...prev.symptoms,
+          {
+            symptomName: newSymptom.trim(),
+            severityLevel: severityLevel,
+            dateTime: symptomDateTime,
+          },
+        ],
       }));
-      setNewSymptom('');
+      setNewSymptom("");
+      setSeverityLevel(1);
+      setSymptomDateTime("");
     }
   };
 
-  const handleRemoveSymptom = (symptom: string) => {
-    setProfile(prev => ({
+  const handleRemoveSymptom = (symptomName: string) => {
+    setProfile((prev) => ({
       ...prev,
-      symptoms: prev.symptoms.filter(s => s !== symptom)
+      symptoms: prev.symptoms.filter((s) => s.symptomName !== symptomName),
     }));
   };
 
   const handleToggleCondition = (condition: string) => {
-    setProfile(prev => ({
+    setProfile((prev) => ({
       ...prev,
-      healthConditions: prev.healthConditions.includes(condition)
-        ? prev.healthConditions.filter(c => c !== condition)
-        : [...prev.healthConditions, condition]
+      conditions: prev.conditions.includes(condition)
+        ? prev.conditions.filter((c) => c !== condition)
+        : [...prev.conditions, condition],
     }));
   };
 
   const handleToggleMedication = (medication: string) => {
-    setProfile(prev => ({
+    setProfile((prev) => ({
       ...prev,
-      medications: prev.medications.includes(medication)
-        ? prev.medications.filter(m => m !== medication)
-        : [...prev.medications, medication]
+      currentUsage: prev.currentUsage.includes(medication)
+        ? prev.currentUsage.filter((m) => m !== medication)
+        : [...prev.currentUsage, medication],
+    }));
+  };
+
+  const handleAddLabTest = (labTest) => {
+    setProfile((prev) => ({
+      ...prev,
+      labTestResults: [...(prev.labTestResults || []), labTest],
+    }));
+  };
+
+  const handleRemoveLabTest = (index: number) => {
+    setProfile((prev) => ({
+      ...prev,
+      labTestResults: prev.labTestResults?.filter((_, i) => i !== index) || [],
+    }));
+  };
+
+  const handleAddPreviousOrder = (order) => {
+    setProfile((prev) => ({
+      ...prev,
+      previousOrders: [...(prev.previousOrders || []), order],
+    }));
+  };
+
+  const handleRemovePreviousOrder = (index: number) => {
+    setProfile((prev) => ({
+      ...prev,
+      previousOrders: prev.previousOrders?.filter((_, i) => i !== index) || [],
     }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (
+      !profile.userDetails?.userId ||
+      !validateUserId(profile.userDetails.userId)
+    ) {
+      alert("User ID is required and must contain both letters and numbers");
+      return;
+    }
     onSubmit(profile);
+  };
+
+  const validateUserId = (userId: string) => {
+    const regex = /^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9]+$/;
+    return userId.length > 0 && regex.test(userId);
+  };
+
+  const resetForm = () => {
+    setProfile({
+      symptoms: [],
+      conditions: [],
+      currentUsage: [],
+    });
+    setNewSymptom("");
+    setSeverityLevel(undefined);
+    setSymptomDateTime("");
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Basic Information */}
       <Card className="health-card">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary">Basic Information</CardTitle>
+          <CardTitle className="text-xl font-semibold text-primary">
+            User Details
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="userId">User ID *</Label>
+              <Input
+                id="userId"
+                type="text"
+                value={profile.userDetails?.userId || ""}
+                placeholder="Enter User ID"
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    userDetails: {
+                      ...prev.userDetails,
+                      userId: e.target.value,
+                      name: prev.userDetails?.name || "",
+                      dateOfBirth: prev.userDetails?.dateOfBirth || "",
+                    },
+                  }))
+                }
+              />
+              {profile.userDetails?.userId &&
+                !validateUserId(profile.userDetails.userId) && (
+                  <p className="text-red-500 text-sm mt-1">
+                    User ID must contain both letters and numbers
+                  </p>
+                )}
+            </div>
+            <div>
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Enter your name"
+                value={profile.userDetails?.name || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    userDetails: {
+                      ...prev.userDetails,
+                      userId: prev.userDetails?.userId || "",
+                      name: e.target.value,
+                      dateOfBirth: prev.userDetails?.dateOfBirth || "",
+                    },
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="dateOfBirth">Date of Birth</Label>
+              <Input
+                id="dateOfBirth"
+                type="date"
+                value={profile.userDetails?.dateOfBirth || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    userDetails: {
+                      ...prev.userDetails,
+                      userId: prev.userDetails?.userId || "",
+                      name: prev.userDetails?.name || "",
+                      dateOfBirth: e.target.value,
+                    },
+                  }))
+                }
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <Card className="health-card">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold text-primary">
+            Basic Information
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -115,11 +238,13 @@ export const HealthForm: React.FC<HealthFormProps> = ({
                 id="age"
                 type="number"
                 placeholder="Enter your age"
-                value={profile.age || ''}
-                onChange={(e) => setProfile(prev => ({ 
-                  ...prev, 
-                  age: parseInt(e.target.value) || undefined 
-                }))}
+                value={profile.age || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    age: parseInt(e.target.value) || undefined,
+                  }))
+                }
               />
             </div>
             <div>
@@ -128,11 +253,16 @@ export const HealthForm: React.FC<HealthFormProps> = ({
                 id="weight"
                 type="number"
                 placeholder="Weight in kg"
-                value={profile.weight || ''}
-                onChange={(e) => setProfile(prev => ({ 
-                  ...prev, 
-                  weight: parseInt(e.target.value) || undefined 
-                }))}
+                value={profile.bodyMetrics?.weightKg || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    bodyMetrics: {
+                      ...prev.bodyMetrics,
+                      weightKg: parseInt(e.target.value) || undefined,
+                    },
+                  }))
+                }
               />
             </div>
             <div>
@@ -141,44 +271,78 @@ export const HealthForm: React.FC<HealthFormProps> = ({
                 id="height"
                 type="number"
                 placeholder="Height in cm"
-                value={profile.height || ''}
-                onChange={(e) => setProfile(prev => ({ 
-                  ...prev, 
-                  height: parseInt(e.target.value) || undefined 
-                }))}
+                value={profile.bodyMetrics?.heightCm || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    bodyMetrics: {
+                      ...prev.bodyMetrics,
+                      heightCm: parseInt(e.target.value) || undefined,
+                    },
+                  }))
+                }
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Current Symptoms */}
       <Card className="health-card">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary">Current Symptoms</CardTitle>
+          <CardTitle className="text-xl font-semibold text-primary">
+            Current Symptoms
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             <Input
               placeholder="Add a symptom"
               value={newSymptom}
               onChange={(e) => setNewSymptom(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSymptom())}
+              onKeyPress={(e) =>
+                e.key === "Enter" && (e.preventDefault(), handleAddSymptom())
+              }
             />
-            <Button type="button" onClick={handleAddSymptom} variant="outline" size="icon">
-              <Plus className="h-4 w-4" />
+            <div>
+              <Input
+                type="number"
+                min="1"
+                max="10"
+                placeholder="Severity Level (1-10)"
+                value={severityLevel}
+                onChange={(e) =>
+                  setSeverityLevel(parseInt(e.target.value) || 1)
+                }
+              />
+            </div>
+            <div>
+              <Input
+                type="datetime-local"
+                value={symptomDateTime}
+                onChange={(e) => setSymptomDateTime(e.target.value)}
+              />
+            </div>
+            <Button type="button" onClick={handleAddSymptom} variant="outline">
+              <Plus className="h-4 w-3 mr-2" />
+              Add Symptom
             </Button>
           </div>
           <div className="flex flex-wrap gap-2">
             {profile.symptoms.length === 0 ? (
-              <p className="text-muted-foreground">No symptoms added yet. Click "Add Symptom" to get started.</p>
+              <p className="text-muted-foreground">
+                No symptoms added yet. Add symptoms with severity levels.
+              </p>
             ) : (
               profile.symptoms.map((symptom) => (
-                <Badge key={symptom} variant="secondary" className="flex items-center gap-1">
-                  {symptom}
-                  <X 
-                    className="h-3 w-3 cursor-pointer" 
-                    onClick={() => handleRemoveSymptom(symptom)}
+                <Badge
+                  key={symptom.symptomName}
+                  variant="secondary"
+                  className="flex items-center gap-1"
+                >
+                  {symptom.symptomName} (Level {symptom.severityLevel})
+                  <X
+                    className="h-3 w-3 cursor-pointer"
+                    onClick={() => handleRemoveSymptom(symptom.symptomName)}
                   />
                 </Badge>
               ))
@@ -187,17 +351,27 @@ export const HealthForm: React.FC<HealthFormProps> = ({
         </CardContent>
       </Card>
 
-      {/* Menstrual Cycle Information */}
       <Card className="health-card">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary">Menstrual Cycle Information</CardTitle>
+          <CardTitle className="text-xl font-semibold text-primary">
+            Menstrual Cycle Information
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label>Cycle Regularity</Label>
-            <Select value={profile.cycleRegularity || ''} onValueChange={(value) => 
-              setProfile(prev => ({ ...prev, cycleRegularity: value as any }))
-            }>
+            <Select
+              value={profile.menstrualCycle?.regularity || ""}
+              onValueChange={(value : "regular" | "irregular" | "unknown") =>
+                setProfile((prev) => ({
+                  ...prev,
+                  menstrualCycle: {
+                    ...prev.menstrualCycle,
+                    regularity: value,
+                  },
+                }))
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select regularity" />
               </SelectTrigger>
@@ -215,11 +389,16 @@ export const HealthForm: React.FC<HealthFormProps> = ({
                 id="daysUntilNext"
                 type="number"
                 placeholder="Days"
-                value={profile.daysUntilNextCycle || ''}
-                onChange={(e) => setProfile(prev => ({ 
-                  ...prev, 
-                  daysUntilNextCycle: parseInt(e.target.value) || undefined 
-                }))}
+                value={profile.menstrualCycle?.daysUntilNextCycle || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    menstrualCycle: {
+                      ...prev.menstrualCycle,
+                      daysUntilNextCycle: parseInt(e.target.value) || undefined,
+                    },
+                  }))
+                }
               />
             </div>
             <div>
@@ -228,11 +407,16 @@ export const HealthForm: React.FC<HealthFormProps> = ({
                 id="cycleLength"
                 type="number"
                 placeholder="Days"
-                value={profile.averageCycleLength || ''}
-                onChange={(e) => setProfile(prev => ({ 
-                  ...prev, 
-                  averageCycleLength: parseInt(e.target.value) || undefined 
-                }))}
+                value={profile.menstrualCycle?.cycleLengthDays || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    menstrualCycle: {
+                      ...prev.menstrualCycle,
+                      cycleLengthDays: parseInt(e.target.value) || undefined,
+                    },
+                  }))
+                }
               />
             </div>
             <div>
@@ -241,49 +425,128 @@ export const HealthForm: React.FC<HealthFormProps> = ({
                 id="periodLength"
                 type="number"
                 placeholder="Days"
-                value={profile.averagePeriodLength || ''}
-                onChange={(e) => setProfile(prev => ({ 
-                  ...prev, 
-                  averagePeriodLength: parseInt(e.target.value) || undefined 
-                }))}
+                value={profile.menstrualCycle?.periodLengthDays || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    menstrualCycle: {
+                      ...prev.menstrualCycle,
+                      periodLengthDays: parseInt(e.target.value) || undefined,
+                    },
+                  }))
+                }
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Health Focus & Priorities */}
       <Card className="health-card">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary">Health Focus & Priorities</CardTitle>
+          <CardTitle className="text-xl font-semibold text-primary">
+            Fertility Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="fertileStart">Fertile Start Date</Label>
+              <Input
+                id="fertileStart"
+                type="date"
+                value={profile.menstrualCycle?.fertileWindowStartDate || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    menstrualCycle: {
+                      ...prev.menstrualCycle,
+                      fertileWindowStartDate: e.target.value,
+                    },
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="fertileEnd">Fertile End Date</Label>
+              <Input
+                id="fertileEnd"
+                type="date"
+                value={profile.menstrualCycle?.fertileWindowEndDate || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    menstrualCycle: {
+                      ...prev.menstrualCycle,
+                      fertileWindowEndDate: e.target.value,
+                    },
+                  }))
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="ovulationDate">Ovulation Date</Label>
+              <Input
+                id="ovulationDate"
+                type="date"
+                value={profile.menstrualCycle?.ovulationDate || ""}
+                onChange={(e) =>
+                  setProfile((prev) => ({
+                    ...prev,
+                    menstrualCycle: {
+                      ...prev.menstrualCycle,
+                      ovulationDate: e.target.value,
+                    },
+                  }))
+                }
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="health-card">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold text-primary">
+            Health Focus & Priorities
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label>Current Health Focus</Label>
-            <Select value={profile.healthFocus || ''} onValueChange={(value) => 
-              setProfile(prev => ({ ...prev, healthFocus: value }))
-            }>
+            <Select
+              value={profile.currentFocus || ""}
+              onValueChange={(value) =>
+                setProfile((prev) => ({ ...prev, currentFocus: value }))
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="What are you focusing on?" />
               </SelectTrigger>
               <SelectContent>
                 {HEALTH_FOCUS_OPTIONS.map((option) => (
-                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Primary Priority</Label>
-            <Select value={profile.primaryPriority || ''} onValueChange={(value) => 
-              setProfile(prev => ({ ...prev, primaryPriority: value }))
-            }>
+            <Select
+              value={profile.userPriority || ""}
+              onValueChange={(value) =>
+                setProfile((prev) => ({ ...prev, userPriority: value }))
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="What's most important to you?" />
               </SelectTrigger>
               <SelectContent>
                 {PRIORITY_OPTIONS.map((option) => (
-                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -291,17 +554,20 @@ export const HealthForm: React.FC<HealthFormProps> = ({
         </CardContent>
       </Card>
 
-      {/* Health Conditions */}
       <Card className="health-card">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary">Health Conditions</CardTitle>
+          <CardTitle className="text-xl font-semibold text-primary">
+            Health Conditions
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {HEALTH_CONDITIONS.map((condition) => (
               <Badge
                 key={condition}
-                variant={profile.healthConditions.includes(condition) ? "default" : "outline"}
+                variant={
+                  profile.conditions.includes(condition) ? "default" : "outline"
+                }
                 className="cursor-pointer transition-all"
                 onClick={() => handleToggleCondition(condition)}
               >
@@ -312,17 +578,22 @@ export const HealthForm: React.FC<HealthFormProps> = ({
         </CardContent>
       </Card>
 
-      {/* Current Medications/Supplements */}
       <Card className="health-card">
         <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary">Current Medications/Supplements</CardTitle>
+          <CardTitle className="text-xl font-semibold text-primary">
+            Current Medications / Supplements
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {MEDICATIONS.map((medication) => (
               <Badge
                 key={medication}
-                variant={profile.medications.includes(medication) ? "default" : "outline"}
+                variant={
+                  profile.currentUsage.includes(medication)
+                    ? "default"
+                    : "outline"
+                }
                 className="cursor-pointer transition-all"
                 onClick={() => handleToggleMedication(medication)}
               >
@@ -333,14 +604,33 @@ export const HealthForm: React.FC<HealthFormProps> = ({
         </CardContent>
       </Card>
 
-      {/* Submit Button */}
-      <div className="flex justify-center">
-        <Button 
-          type="submit" 
-          className="health-gradient text-white px-8 py-3 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+      <LabTestForm
+        labTestResults={profile.labTestResults || []}
+        onAddLabTest={handleAddLabTest}
+        onRemoveLabTest={handleRemoveLabTest}
+      />
+
+      <PreviousOrdersForm
+        previousOrders={profile.previousOrders || []}
+        onAddPreviousOrder={handleAddPreviousOrder}
+        onRemovePreviousOrder={handleRemovePreviousOrder}
+      />
+
+      <div className="flex flex-col sm:flex-row justify-center gap-4">
+        <Button
+          type="submit"
+          className="health-gradient text-white px-8 py-3 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 w-full sm:w-auto"
           disabled={isLoading}
         >
-          {isLoading ? 'Loading...' : submitButtonText}
+          {isLoading ? "Loading..." : submitButtonText}
+        </Button>
+        <Button
+          type="button"
+          onClick={resetForm}
+          variant="outline"
+          className="px-8 py-3 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 w-full sm:w-auto"
+        >
+          Reset
         </Button>
       </div>
     </form>

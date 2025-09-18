@@ -1,22 +1,49 @@
-// API configuration and utilities
-export const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-api-domain.com/api' 
-  : 'http://localhost:3000/api';
+export const API_BASE_URL = 'https://ovasave.zignuts.dev/api'
 
-// Health data types
 export interface HealthProfile {
+  userDetails?: {
+    userId: string;
+    name: string;
+    dateOfBirth: string;
+  };
   age?: number;
-  weight?: number;
-  height?: number;
-  symptoms: string[];
-  cycleRegularity?: 'regular' | 'irregular' | 'unknown';
-  daysUntilNextCycle?: number;
-  averageCycleLength?: number;
-  averagePeriodLength?: number;
-  healthFocus?: string;
-  primaryPriority?: string;
-  healthConditions: string[];
-  medications: string[];
+  bodyMetrics?: {
+    weightKg?: number;
+    heightCm?: number;
+  };
+  symptoms: Array<{
+    symptomName: string;
+    severityLevel: number;
+    dateTime: string;
+  }>;
+  menstrualCycle?: {
+    regularity?: 'regular' | 'irregular' | 'unknown';
+    daysUntilNextCycle?: number;
+    fertileWindowStartDate?: string;
+    fertileWindowEndDate?: string;
+    ovulationDate?: string;
+    cycleLengthDays?: number;
+    periodLengthDays?: number;
+  };
+  labTestResults?: Array<{
+    orderId: string;
+    testName: string;
+    value: number;
+    status: string;
+    testDate: string;
+  }>;
+  previousOrders?: Array<{
+    orderId: string;
+    items: Array<{
+      name: string;
+      quantity: number;
+    }>;
+    orderDateTime: string;
+  }>;
+  currentFocus?: string;
+  conditions: string[];
+  currentUsage: string[];
+  userPriority?: string;
 }
 
 export interface HealthTipsRequest extends HealthProfile {
@@ -34,15 +61,19 @@ export interface ApiResponse<T> {
 }
 
 export interface HealthTipsResponse {
-  tips: string[];
-  recommendations: string[];
-  insights: string[];
+  HealthTips: {
+    summary: string;
+    tips: string;
+  };
 }
 
 export interface ProductSuggestionsResponse {
-  supplements: Product[];
-  testKits: Product[];
-  products: Product[];
+  ProductRecommendation: Array<{
+    name: string;
+    category: string;
+    description: string;
+    recommendationNote?: string;
+  }>;
 }
 
 export interface Product {
@@ -56,15 +87,14 @@ export interface Product {
   benefits: string[];
 }
 
-// API functions
 export async function getHealthTips(profile: HealthProfile): Promise<ApiResponse<HealthTipsResponse>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/health-tips`, {
+    const response = await fetch(`${API_BASE_URL}/tips/health-tips`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ...profile, type: 'health-tips' }),
+      body: JSON.stringify(profile),
     });
 
     if (!response.ok) {
@@ -72,7 +102,7 @@ export async function getHealthTips(profile: HealthProfile): Promise<ApiResponse
     }
 
     const data = await response.json();
-    return { success: true, data };
+    return { success: true, data: data.data };
   } catch (error) {
     console.error('Error fetching health tips:', error);
     return { 
@@ -84,7 +114,7 @@ export async function getHealthTips(profile: HealthProfile): Promise<ApiResponse
 
 export async function getProductSuggestions(profile: HealthProfile): Promise<ApiResponse<ProductSuggestionsResponse>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/product-suggestions`, {
+    const response = await fetch(`${API_BASE_URL}/tips/product-recommendation`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -97,7 +127,7 @@ export async function getProductSuggestions(profile: HealthProfile): Promise<Api
     }
 
     const data = await response.json();
-    return { success: true, data };
+    return { success: true, data: data.data };
   } catch (error) {
     console.error('Error fetching product suggestions:', error);
     return { 
@@ -107,67 +137,24 @@ export async function getProductSuggestions(profile: HealthProfile): Promise<Api
   }
 }
 
-// Mock data for development
 export const mockHealthTips: HealthTipsResponse = {
-  tips: [
-    "Track your menstrual cycle to better understand your body's patterns",
-    "Incorporate omega-3 rich foods like salmon and walnuts into your diet",
-    "Practice stress-reduction techniques like meditation or yoga",
-    "Ensure adequate sleep (7-9 hours) for optimal hormonal balance"
-  ],
-  recommendations: [
-    "Consider taking a high-quality multivitamin designed for women",
-    "Schedule regular check-ups with your healthcare provider",
-    "Stay hydrated with at least 8 glasses of water daily"
-  ],
-  insights: [
-    "Your symptoms may be related to hormonal fluctuations",
-    "Your health focus suggests you may benefit from fertility support",
-    "Consider tracking additional metrics for better health insights"
-  ]
+  HealthTips: {
+    summary: "<p>Dial in your fertile window with a simple plan for next cycle—clear signs, smart timing, and stress‑light routines.</p>",
+    tips: "<p><strong>Your fertile-window game plan (irregular cycles + PCOS-aware):</strong></p><ul><li><strong>Widen the window:</strong> If your app shows only a one‑day fertile window, treat the few days before and just after the predicted day as potentially fertile.</li></ul>"
+  }
 };
 
 export const mockProductSuggestions: ProductSuggestionsResponse = {
-  supplements: [
+  ProductRecommendation: [
     {
-      id: "1",
       name: "Women's Daily Multivitamin",
-      description: "Complete multivitamin with iron, folate, and B vitamins",
-      category: "Multivitamin",
-      price: 29.99,
-      rating: 4.5,
-      benefits: ["Supports energy", "Immune health", "Reproductive health"]
+      category: "Supplement",
+      description: "Complete multivitamin with iron, folate, and B vitamins for reproductive health support"
     },
     {
-      id: "2", 
-      name: "Omega-3 Fish Oil",
-      description: "High-quality EPA/DHA for heart and brain health",
-      category: "Omega-3",
-      price: 24.99,
-      rating: 4.7,
-      benefits: ["Heart health", "Brain function", "Anti-inflammatory"]
-    }
-  ],
-  testKits: [
-    {
-      id: "3",
-      name: "Hormone Balance Test",
-      description: "At-home hormone testing kit",
-      category: "Test Kit",
-      price: 159.99,
-      rating: 4.3,
-      benefits: ["Hormone insights", "Convenient", "Professional analysis"]
-    }
-  ],
-  products: [
-    {
-      id: "4",
-      name: "Cycle Tracking Journal",
-      description: "Beautiful journal for tracking menstrual cycles",
-      category: "Tracking",
-      price: 19.99,
-      rating: 4.6,
-      benefits: ["Cycle awareness", "Symptom tracking", "Beautiful design"]
+      name: "AMH Test Kit",
+      category: "Test", 
+      description: "At-home Anti-Müllerian Hormone test to assess ovarian reserve"
     }
   ]
 };
