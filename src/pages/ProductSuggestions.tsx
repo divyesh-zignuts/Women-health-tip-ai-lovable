@@ -20,30 +20,43 @@ const ProductSuggestions = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<ProductSuggestionsResponse | null>(null);
 
-  const handleSubmit = async (profile: HealthProfile) => {
-    setIsLoading(true);
+const handleSubmit = async (profile: HealthProfile) => {
+  setIsLoading(true);
+  
+  try {
+    const response = await getProductSuggestions(profile);
     
-    try {
-      const response = await getProductSuggestions(profile);
-      
-      if (response.success && response.data) {
+    if (response.success && response.data && response.data.ProductRecommendation) {
+      if (response.data.ProductRecommendation.length > 0) {
         setResults(response.data);
         toast({
           title: "Product Recommendations Ready!",
           description: "Your personalized product suggestions are ready.",
         });
-      } 
-    } catch (error) {
-      setResults(mockProductSuggestions);
+      } else {
+        toast({
+          title: "Need More Information",
+          description: "Please add more details about your health profile to get personalized product recommendations.",
+          variant: "destructive",
+        });
+      }
+    } else {
       toast({
-        title: "Something went wrong",
-        description: "Please try again", 
-        variant: "default",
+        title: "Need More Information",
+        description: "Please add symptoms, conditions, or other health details to get personalized product recommendations.",
+        variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
-  };
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Something went wrong. Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // if (results) {
   //   return (

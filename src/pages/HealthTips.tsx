@@ -25,27 +25,43 @@ const HealthTips = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<HealthTipsResponse | null>(null);
 
-  const handleSubmit = async (profile: HealthProfile) => {
-    setIsLoading(true);
+const handleSubmit = async (profile: HealthProfile) => {
+  setIsLoading(true);
 
-    try {
-      const response = await getHealthTips(profile);
+  try {
+    const response = await getHealthTips(profile);
 
-      if (response.success && response.data) {
+    if (response.success && response.data && response.data.HealthTips) {
+      if (response.data.HealthTips.summary || response.data.HealthTips.tips) {
         setResults(response.data);
         toast({
           title: "Health Tips Generated!",
           description: "Your personalized health recommendations are ready.",
         });
       } else {
-        setResults(mockHealthTips);
+        toast({
+          title: "Need More Information",
+          description: "Please add more details about your health profile to get personalized tips.",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      setResults(mockHealthTips);
-    } finally {
-      setIsLoading(false);
+    } else {
+      toast({
+        title: "Need More Information", 
+        description: "Please add symptoms, conditions, or other health details to get personalized recommendations.",
+        variant: "destructive",
+      });
     }
-  };
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Something went wrong. Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // if (results) {
   //   return (

@@ -40,7 +40,10 @@ export const PreviousOrdersForm: React.FC<PreviousOrdersFormProps> = ({
       newPreviousOrder.orderDateTime &&
       newPreviousOrder.items.some((item) => item.name.trim())
     ) {
-      onAddPreviousOrder({ ...newPreviousOrder });
+      onAddPreviousOrder({
+        ...newPreviousOrder,
+        orderDateTime: newPreviousOrder.orderDateTime,
+      });
       setNewPreviousOrder({
         orderId: "",
         items: [],
@@ -53,7 +56,13 @@ export const PreviousOrdersForm: React.FC<PreviousOrdersFormProps> = ({
     if (newOrderItem.name.trim()) {
       setNewPreviousOrder((prev) => ({
         ...prev,
-        items: [...prev.items, { ...newOrderItem }],
+        items: [
+          ...prev.items,
+          {
+            name: newOrderItem.name,
+            quantity: parseInt(newOrderItem.quantity) || 1,
+          },
+        ],
       }));
       setNewOrderItem({ name: "", quantity: "" });
     }

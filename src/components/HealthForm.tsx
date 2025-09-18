@@ -21,6 +21,7 @@ import {
 } from "@/constants/constant";
 import { LabTestForm } from "./LabTestForm";
 import { PreviousOrdersForm } from "./PreviousOrdersForm";
+import { useToast } from "@/hooks/use-toast";
 
 interface HealthFormProps {
   onSubmit: (profile: HealthProfile) => void;
@@ -41,6 +42,7 @@ export const HealthForm: React.FC<HealthFormProps> = ({
   const [newSymptom, setNewSymptom] = useState("");
   const [severityLevel, setSeverityLevel] = useState<number>();
   const [symptomDateTime, setSymptomDateTime] = useState("");
+  const { toast } = useToast();
 
   const handleAddSymptom = () => {
     if (
@@ -55,7 +57,7 @@ export const HealthForm: React.FC<HealthFormProps> = ({
           {
             symptomName: newSymptom.trim(),
             severityLevel: severityLevel,
-            dateTime: symptomDateTime,
+            dateTime: symptomDateTime + ':00.000Z',
           },
         ],
       }));
@@ -104,12 +106,17 @@ export const HealthForm: React.FC<HealthFormProps> = ({
     }));
   };
 
-  const handleAddPreviousOrder = (order) => {
-    setProfile((prev) => ({
-      ...prev,
-      previousOrders: [...(prev.previousOrders || []), order],
-    }));
+const handleAddPreviousOrder = (order) => {
+  const formattedOrder = {
+    ...order,
+    orderDateTime: order.orderDateTime + ':00.000Z'
   };
+  
+  setProfile((prev) => ({
+    ...prev,
+    previousOrders: [...(prev.previousOrders || []), formattedOrder],
+  }));
+};
 
   const handleRemovePreviousOrder = (index: number) => {
     setProfile((prev) => ({
@@ -118,22 +125,49 @@ export const HealthForm: React.FC<HealthFormProps> = ({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      !profile.userDetails?.userId ||
-      !validateUserId(profile.userDetails.userId)
-    ) {
-      alert("User ID is required and must contain both letters and numbers");
-      return;
-    }
-    onSubmit(profile);
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!profile.userDetails?.userId) {
+    toast({
+      title: "User ID Required",
+      description: "Please enter a User ID to continue",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  const cleanedProfile: HealthProfile = {
+    userDetails: profile.userDetails,
   };
 
-  const validateUserId = (userId: string) => {
-    const regex = /^(?=.*[a-zA-Z])(?=.*[0-9])[a-zA-Z0-9]+$/;
-    return userId.length > 0 && regex.test(userId);
-  };
+  if (profile.age) cleanedProfile.age = profile.age;
+  if (profile.maritalStatus) cleanedProfile.maritalStatus = profile.maritalStatus;
+  if (profile.bodyMetrics?.weightKg || profile.bodyMetrics?.heightCm) {
+    cleanedProfile.bodyMetrics = profile.bodyMetrics;
+  }
+  if (profile.symptoms && profile.symptoms.length > 0) {
+    cleanedProfile.symptoms = profile.symptoms;
+  }
+  if (profile.menstrualCycle && Object.values(profile.menstrualCycle).some(val => val)) {
+    cleanedProfile.menstrualCycle = profile.menstrualCycle;
+  }
+  if (profile.labTestResults && profile.labTestResults.length > 0) {
+    cleanedProfile.labTestResults = profile.labTestResults;
+  }
+  if (profile.previousOrders && profile.previousOrders.length > 0) {
+    cleanedProfile.previousOrders = profile.previousOrders;
+  }
+  if (profile.currentFocus) cleanedProfile.currentFocus = profile.currentFocus;
+  if (profile.conditions && profile.conditions.length > 0) {
+    cleanedProfile.conditions = profile.conditions;
+  }
+  if (profile.currentUsage && profile.currentUsage.length > 0) {
+    cleanedProfile.currentUsage = profile.currentUsage;
+  }
+  if (profile.userPriority) cleanedProfile.userPriority = profile.userPriority;
+
+  onSubmit(cleanedProfile);
+};
 
   const resetForm = () => {
     setProfile({
@@ -175,12 +209,6 @@ export const HealthForm: React.FC<HealthFormProps> = ({
                   }))
                 }
               />
-              {profile.userDetails?.userId &&
-                !validateUserId(profile.userDetails.userId) && (
-                  <p className="text-red-500 text-sm mt-1">
-                    User ID must contain both letters and numbers
-                  </p>
-                )}
             </div>
             <div>
               <Label htmlFor="name">Name</Label>
@@ -231,7 +259,7 @@ export const HealthForm: React.FC<HealthFormProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="age">Age</Label>
               <Input
@@ -246,6 +274,23 @@ export const HealthForm: React.FC<HealthFormProps> = ({
                   }))
                 }
               />
+            </div>
+            <div>
+              <Label htmlFor="maritalStatus">Marital Status</Label>
+              <Select
+                value={profile.maritalStatus || ""}
+                onValueChange={(value: "married" | "unmarried") =>
+                  setProfile((prev) => ({ ...prev, maritalStatus: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="married">Married</SelectItem>
+                  <SelectItem value="unmarried">Unmarried</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="weight">Weight (kg)</Label>
@@ -362,7 +407,7 @@ export const HealthForm: React.FC<HealthFormProps> = ({
             <Label>Cycle Regularity</Label>
             <Select
               value={profile.menstrualCycle?.regularity || ""}
-              onValueChange={(value : "regular" | "irregular" | "unknown") =>
+              onValueChange={(value: "regular" | "irregular" | "unknown") =>
                 setProfile((prev) => ({
                   ...prev,
                   menstrualCycle: {
