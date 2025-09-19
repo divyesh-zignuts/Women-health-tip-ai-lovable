@@ -120,7 +120,7 @@ export async function getProductSuggestions(
 ): Promise<ApiResponse<ProductSuggestionsResponse>> {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/tips/product-recommendation`,
+      `${API_BASE_URL}/products/product-recommendation`,
       {
         method: "POST",
         headers: {
