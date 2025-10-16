@@ -141,6 +141,7 @@ const handleSubmit = (e: React.FormEvent) => {
   };
 
   if (profile.age) cleanedProfile.age = profile.age;
+  if (profile.gender) cleanedProfile.gender = profile.gender;
   if (profile.maritalStatus) cleanedProfile.maritalStatus = profile.maritalStatus;
   if (profile.bodyMetrics?.weightKg || profile.bodyMetrics?.heightCm) {
     cleanedProfile.bodyMetrics = profile.bodyMetrics;
@@ -259,7 +260,7 @@ const handleSubmit = (e: React.FormEvent) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <Label htmlFor="age">Age</Label>
               <Input
@@ -275,6 +276,25 @@ const handleSubmit = (e: React.FormEvent) => {
                 }
               />
             </div>
+
+            <div>
+              <Label htmlFor="gender">Gender</Label>
+              <Select
+                value={profile.gender || ""}
+                onValueChange={(value: "male" | "female") =>
+                  setProfile((prev) => ({ ...prev, gender: value }))
+                }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+              </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <Label htmlFor="maritalStatus">Marital Status</Label>
               <Select

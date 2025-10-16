@@ -7,6 +7,7 @@ export interface HealthProfile {
     dateOfBirth: string;
   };
   age?: number;
+  gender?: "male" | "female";
   maritalStatus?: "married" | "unmarried";
   bodyMetrics?: {
     weightKg?: number;
