@@ -73,6 +73,7 @@ export interface ProductSuggestionsResponse {
   ProductRecommendation: Array<{
     name: string;
     category: string;
+    reason?: string;
     description: string;
     recommendationNote?: string;
   }>;

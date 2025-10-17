@@ -79,7 +79,7 @@ const handleSubmit = async (profile: HealthProfile) => {
 
 const copyAllContent = () => {
   const allContent = results?.ProductRecommendation.map(item => 
-    `${item.name} (${item.category})\n${item.description}${item.recommendationNote ? `\nNote: ${item.recommendationNote}` : ''}`
+    `${item.name} (${item.category})\n${item.reason ? `Reason: ${item.reason}\n` : ''}${item.description}${item.recommendationNote ? `\nNote: ${item.recommendationNote}` : ''}`
   ).join('\n\n') || '';
 
   navigator.clipboard.writeText(allContent).then(() => {
@@ -174,6 +174,13 @@ const copyAllContent = () => {
                           {item.category}
                         </span>
                       </div>
+                      {item.reason && (
+                        <div className="bg-indigo-50 border border-indigo-200 rounded p-3 mb-2">
+                          <p className="text-indigo-900 text-sm">
+                            <span className="font-semibold">Why we recommend this:</span> {item.reason}
+                          </p>
+                        </div>
+                      )}
                       <p className="text-muted-foreground mb-2">{item.description}</p>
                       {item.recommendationNote && (
                         <div className="bg-yellow-50 border border-yellow-200 rounded p-2 mt-2">

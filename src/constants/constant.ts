@@ -23,7 +23,6 @@ export const HEALTH_FOCUS_OPTIONS = [
   "Nutrition and weight loss",
   "Mental health and well being",
   "Perimenopause and menopause",
-  "Just exploring the app",
 ];
 
 export const PRIORITY_OPTIONS = [
